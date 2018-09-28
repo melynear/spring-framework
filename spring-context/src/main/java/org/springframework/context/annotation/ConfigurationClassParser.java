@@ -90,9 +90,9 @@ import org.springframework.util.StringUtils;
  * another using the {@link Import} annotation).
  *
  * <p>This class helps separate the concern of parsing the structure of a Configuration
- * class from the concern of registering BeanDefinition objects based on the
- * content of that model (with the exception of {@code @ComponentScan} annotations which
- * need to be registered immediately).
+ * class from the concern of registering BeanDefinition objects based on the content of
+ * that model (with the exception of {@code @ComponentScan} annotations which need to be
+ * registered immediately).
  *
  * <p>This ASM-based implementation avoids reflection and eager class loading in order to
  * interoperate effectively with lazy class loading in a Spring ApplicationContext.
@@ -288,9 +288,12 @@ class ConfigurationClassParser {
 						this.componentScanParser.parse(componentScan, sourceClass.getMetadata().getClassName());
 				// Check the set of scanned definitions for any further config classes and parse recursively if needed
 				for (BeanDefinitionHolder holder : scannedBeanDefinitions) {
-					if (ConfigurationClassUtils.checkConfigurationClassCandidate(
-							holder.getBeanDefinition(), this.metadataReaderFactory)) {
-						parse(holder.getBeanDefinition().getBeanClassName(), holder.getBeanName());
+					BeanDefinition bdCand = holder.getBeanDefinition().getOriginatingBeanDefinition();
+					if (bdCand == null) {
+						bdCand = holder.getBeanDefinition();
+					}
+					if (ConfigurationClassUtils.checkConfigurationClassCandidate(bdCand, this.metadataReaderFactory)) {
+						parse(bdCand.getBeanClassName(), holder.getBeanName());
 					}
 				}
 			}
@@ -550,16 +553,15 @@ class ConfigurationClassParser {
 		for (DeferredImportSelectorHolder deferredImport : deferredImports) {
 			Class<? extends Group> group = deferredImport.getImportSelector().getImportGroup();
 			DeferredImportSelectorGrouping grouping = groupings.computeIfAbsent(
-					(group == null ? deferredImport : group),
-					(key) -> new DeferredImportSelectorGrouping(createGroup(group)));
+					(group != null ? group : deferredImport),
+					key -> new DeferredImportSelectorGrouping(createGroup(group)));
 			grouping.add(deferredImport);
 			configurationClasses.put(deferredImport.getConfigurationClass().getMetadata(),
 					deferredImport.getConfigurationClass());
 		}
 		for (DeferredImportSelectorGrouping grouping : groupings.values()) {
-			grouping.getImports().forEach((entry) -> {
-				ConfigurationClass configurationClass = configurationClasses.get(
-						entry.getMetadata());
+			grouping.getImports().forEach(entry -> {
+				ConfigurationClass configurationClass = configurationClasses.get(entry.getMetadata());
 				try {
 					processImports(configurationClass, asSourceClass(configurationClass),
 							asSourceClasses(entry.getImportClassName()), false);
@@ -570,15 +572,14 @@ class ConfigurationClassParser {
 				catch (Throwable ex) {
 					throw new BeanDefinitionStoreException(
 							"Failed to process import candidates for configuration class [" +
-									configurationClass.getMetadata().getClassName() + "]", ex);
+							configurationClass.getMetadata().getClassName() + "]", ex);
 				}
 			});
 		}
 	}
 
 	private Group createGroup(@Nullable Class<? extends Group> type) {
-		Class<? extends Group> effectiveType = (type != null ? type
-				: DefaultDeferredImportSelectorGroup.class);
+		Class<? extends Group> effectiveType = (type != null ? type : DefaultDeferredImportSelectorGroup.class);
 		Group group = BeanUtils.instantiateClass(effectiveType);
 		ParserStrategyUtils.invokeAwareMethods(group,
 				ConfigurationClassParser.this.environment,
@@ -702,7 +703,7 @@ class ConfigurationClassParser {
 	}
 
 	/**
-	 * Factory method to obtain {@link SourceClass}s from class names.
+	 * Factory method to obtain {@link SourceClass SourceClasss} from class names.
 	 */
 	private Collection<SourceClass> asSourceClasses(String... classNames) throws IOException {
 		List<SourceClass> annotatedClasses = new ArrayList<>(classNames.length);
@@ -993,7 +994,7 @@ class ConfigurationClassParser {
 		private SourceClass getRelated(String className) throws IOException {
 			if (this.source instanceof Class) {
 				try {
-					Class<?> clazz = ((Class<?>) this.source).getClassLoader().loadClass(className);
+					Class<?> clazz = ClassUtils.forName(className, ((Class<?>) this.source).getClassLoader());
 					return asSourceClass(clazz);
 				}
 				catch (ClassNotFoundException ex) {

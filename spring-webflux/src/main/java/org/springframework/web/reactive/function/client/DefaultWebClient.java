@@ -163,7 +163,6 @@ class DefaultWebClient implements WebClient {
 
 		private final Map<String, Object> attributes = new LinkedHashMap<>(4);
 
-
 		DefaultRequestBodyUriSpec(HttpMethod httpMethod) {
 			this.httpMethod = httpMethod;
 		}
@@ -215,7 +214,6 @@ class DefaultWebClient implements WebClient {
 
 		@Override
 		public DefaultRequestBodyUriSpec headers(Consumer<HttpHeaders> headersConsumer) {
-			Assert.notNull(headersConsumer, "'headersConsumer' must not be null");
 			headersConsumer.accept(getHeaders());
 			return this;
 		}
@@ -228,7 +226,6 @@ class DefaultWebClient implements WebClient {
 
 		@Override
 		public RequestBodySpec attributes(Consumer<Map<String, Object>> attributesConsumer) {
-			Assert.notNull(attributesConsumer, "'attributesConsumer' must not be null");
 			attributesConsumer.accept(this.attributes);
 			return this;
 		}
@@ -265,7 +262,6 @@ class DefaultWebClient implements WebClient {
 
 		@Override
 		public DefaultRequestBodyUriSpec cookies(Consumer<MultiValueMap<String, String>> cookiesConsumer) {
-			Assert.notNull(cookiesConsumer, "'cookiesConsumer' must not be null");
 			cookiesConsumer.accept(getCookies());
 			return this;
 		}
@@ -321,7 +317,7 @@ class DefaultWebClient implements WebClient {
 		}
 
 		private ClientRequest.Builder initRequestBuilder() {
-			URI uri = this.uri != null ? this.uri : uriBuilderFactory.expand("");
+			URI uri = (this.uri != null ? this.uri : uriBuilderFactory.expand(""));
 			return ClientRequest.create(this.httpMethod, uri)
 					.headers(headers -> headers.addAll(initHeaders()))
 					.cookies(cookies -> cookies.addAll(initCookies()))
@@ -349,7 +345,7 @@ class DefaultWebClient implements WebClient {
 
 		private MultiValueMap<String, String> initCookies() {
 			if (CollectionUtils.isEmpty(this.cookies)) {
-				return (defaultCookies != null ? defaultCookies : new LinkedMultiValueMap<>(0));
+				return (defaultCookies != null ? defaultCookies : new LinkedMultiValueMap<>());
 			}
 			else if (CollectionUtils.isEmpty(defaultCookies)) {
 				return this.cookies;
@@ -378,7 +374,6 @@ class DefaultWebClient implements WebClient {
 
 		private List<StatusHandler> statusHandlers = new ArrayList<>(1);
 
-
 		DefaultResponseSpec(Mono<ClientResponse> responseMono) {
 			this.responseMono = responseMono;
 			this.statusHandlers.add(DEFAULT_STATUS_HANDLER);
@@ -388,13 +383,9 @@ class DefaultWebClient implements WebClient {
 		public ResponseSpec onStatus(Predicate<HttpStatus> statusPredicate,
 				Function<ClientResponse, Mono<? extends Throwable>> exceptionFunction) {
 
-			Assert.notNull(statusPredicate, "'statusPredicate' must not be null");
-			Assert.notNull(exceptionFunction, "'exceptionFunction' must not be null");
-
 			if (this.statusHandlers.size() == 1 && this.statusHandlers.get(0) == DEFAULT_STATUS_HANDLER) {
 				this.statusHandlers.clear();
 			}
-
 			this.statusHandlers.add(new StatusHandler(statusPredicate, exceptionFunction));
 
 			return this;
@@ -476,6 +467,7 @@ class DefaultWebClient implements WebClient {
 					});
 		}
 
+
 		private static class StatusHandler {
 
 			private final Predicate<HttpStatus> predicate;
@@ -484,6 +476,9 @@ class DefaultWebClient implements WebClient {
 
 			public StatusHandler(Predicate<HttpStatus> predicate,
 					Function<ClientResponse, Mono<? extends Throwable>> exceptionFunction) {
+
+				Assert.notNull(predicate, "Predicate must not be null");
+				Assert.notNull(exceptionFunction, "Function must not be null");
 				this.predicate = predicate;
 				this.exceptionFunction = exceptionFunction;
 			}
@@ -496,6 +491,6 @@ class DefaultWebClient implements WebClient {
 				return this.exceptionFunction.apply(response);
 			}
 		}
-
 	}
+
 }

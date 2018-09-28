@@ -17,6 +17,7 @@
 package org.springframework.http.server.reactive;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 
 import io.undertow.server.HttpServerExchange;
 import org.apache.commons.logging.Log;
@@ -64,8 +65,18 @@ public class UndertowHttpHandlerAdapter implements io.undertow.server.HttpHandle
 
 
 	@Override
-	public void handleRequest(HttpServerExchange exchange) throws Exception {
-		ServerHttpRequest request = new UndertowServerHttpRequest(exchange, getDataBufferFactory());
+	public void handleRequest(HttpServerExchange exchange) {
+		ServerHttpRequest request = null;
+		try {
+			request = new UndertowServerHttpRequest(exchange, getDataBufferFactory());
+		}
+		catch (URISyntaxException ex) {
+			if (logger.isWarnEnabled()) {
+				logger.warn("Invalid URL for incoming request: " + ex.getMessage());
+			}
+			exchange.setStatusCode(400);
+			return;
+		}
 		ServerHttpResponse response = new UndertowServerHttpResponse(exchange, getDataBufferFactory());
 
 		if (request.getMethod() == HttpMethod.HEAD) {
@@ -97,7 +108,7 @@ public class UndertowHttpHandlerAdapter implements io.undertow.server.HttpHandle
 
 		@Override
 		public void onError(Throwable ex) {
-			logger.error("Handling completed with error", ex);
+			logger.warn("Handling completed with error: " + ex.getMessage());
 			if (this.exchange.isResponseStarted()) {
 				try {
 					logger.debug("Closing connection");

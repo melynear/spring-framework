@@ -121,10 +121,11 @@ public abstract class ClassUtils {
 		primitiveWrapperTypeMap.put(Long.class, long.class);
 		primitiveWrapperTypeMap.put(Short.class, short.class);
 
-		primitiveWrapperTypeMap.forEach((key, value) -> {
-			primitiveTypeToWrapperMap.put(value, key);
-			registerCommonClasses(key);
-		});
+		// Map entry iteration is less expensive to initialize than forEach with lambdas
+		for (Map.Entry<Class<?>, Class<?>> entry : primitiveWrapperTypeMap.entrySet()) {
+			primitiveTypeToWrapperMap.put(entry.getValue(), entry.getKey());
+			registerCommonClasses(entry.getKey());
+		}
 
 		Set<Class<?>> primitiveTypes = new HashSet<>(32);
 		primitiveTypes.addAll(primitiveWrapperTypeMap.values());
@@ -227,7 +228,7 @@ public abstract class ClassUtils {
 	 * @param name the name of the Class
 	 * @param classLoader the class loader to use
 	 * (may be {@code null}, which indicates the default class loader)
-	 * @return Class instance for the supplied name
+	 * @return a class instance for the supplied name
 	 * @throws ClassNotFoundException if the class was not found
 	 * @throws LinkageError if the class file could not be loaded
 	 * @see Class#forName(String, boolean, ClassLoader)
@@ -298,7 +299,7 @@ public abstract class ClassUtils {
 	 * @param className the name of the Class
 	 * @param classLoader the class loader to use
 	 * (may be {@code null}, which indicates the default class loader)
-	 * @return Class instance for the supplied name
+	 * @return a class instance for the supplied name
 	 * @throws IllegalArgumentException if the class name was not resolvable
 	 * (that is, the class could not be found or the class file could not be loaded)
 	 * @see #forName(String, ClassLoader)
@@ -754,6 +755,8 @@ public abstract class ClassUtils {
 	 * @param interfaces the interfaces to merge
 	 * @param classLoader the ClassLoader to create the composite Class in
 	 * @return the merged interface as Class
+	 * @throws IllegalArgumentException if the specified interfaces expose
+	 * conflicting method signatures (or a similar constraint is violated)
 	 * @see java.lang.reflect.Proxy#getProxyClass
 	 */
 	@SuppressWarnings("deprecation")
@@ -868,7 +871,7 @@ public abstract class ClassUtils {
 	public static Class<?> getUserClass(Class<?> clazz) {
 		if (clazz.getName().contains(CGLIB_CLASS_SEPARATOR)) {
 			Class<?> superclass = clazz.getSuperclass();
-			if (superclass != null && Object.class != superclass) {
+			if (superclass != null && superclass != Object.class) {
 				return superclass;
 			}
 		}
@@ -1227,10 +1230,10 @@ public abstract class ClassUtils {
 	 * access (e.g. calls to {@code Class#getDeclaredMethods} etc, this implementation
 	 * will fall back to returning the originally provided method.
 	 * @param method the method to be invoked, which may come from an interface
-	 * @param targetClass the target class for the current invocation.
-	 * May be {@code null} or may not even implement the method.
+	 * @param targetClass the target class for the current invocation
+	 * (may be {@code null} or may not even implement the method)
 	 * @return the specific target method, or the original method if the
-	 * {@code targetClass} doesn't implement it or is {@code null}
+	 * {@code targetClass} does not implement it
 	 */
 	public static Method getMostSpecificMethod(Method method, @Nullable Class<?> targetClass) {
 		if (targetClass != null && targetClass != method.getDeclaringClass() && isOverridable(method, targetClass)) {

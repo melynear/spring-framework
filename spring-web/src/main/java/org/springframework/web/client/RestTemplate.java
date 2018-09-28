@@ -60,55 +60,20 @@ import org.springframework.web.util.DefaultUriBuilderFactory;
 import org.springframework.web.util.UriTemplateHandler;
 
 /**
- * <strong>Spring's central class for synchronous client-side HTTP access.</strong>
- * It simplifies communication with HTTP servers, and enforces RESTful principles.
- * It handles HTTP connections, leaving application code to provide URLs
- * (with possible template variables) and extract results.
+ * Synchronous client to perform HTTP requests, exposing a simple, template
+ * method API over underlying HTTP client libraries such as the JDK
+ * {@code HttpURLConnection}, Apache HttpComponents, and others.
  *
- * <p><strong>Note:</strong> by default the RestTemplate relies on standard JDK
- * facilities to establish HTTP connections. You can switch to use a different
- * HTTP library such as Apache HttpComponents, Netty, and OkHttp through the
- * {@link #setRequestFactory} property.
+ * <p>The RestTemplate offers templates for common scenarios by HTTP method, in
+ * addition to the generalized {@code exchange} and {@code execute} methods that
+ * support of less frequent cases.
  *
- * <p>The main entry points of this template are the methods named after the six main HTTP methods:
- * <table>
- * <tr><th>HTTP method</th><th>RestTemplate methods</th></tr>
- * <tr><td>DELETE</td><td>{@link #delete}</td></tr>
- * <tr><td>GET</td><td>{@link #getForObject}</td></tr>
- * <tr><td></td><td>{@link #getForEntity}</td></tr>
- * <tr><td>HEAD</td><td>{@link #headForHeaders}</td></tr>
- * <tr><td>OPTIONS</td><td>{@link #optionsForAllow}</td></tr>
- * <tr><td>POST</td><td>{@link #postForLocation}</td></tr>
- * <tr><td></td><td>{@link #postForObject}</td></tr>
- * <tr><td>PUT</td><td>{@link #put}</td></tr>
- * <tr><td>any</td><td>{@link #exchange}</td></tr>
- * <tr><td></td><td>{@link #execute}</td></tr> </table>
- *
- * <p>In addition the {@code exchange} and {@code execute} methods are generalized versions of
- * the above methods and can be used to support additional, less frequent combinations (e.g.
- * HTTP PATCH, HTTP PUT with response body, etc.). Note however that the underlying HTTP
- * library used must also support the desired combination.
- *
- * <p><strong>Note:</strong> For URI templates it is assumed encoding is necessary, e.g.
- * {@code restTemplate.getForObject("http://example.com/hotel list")} becomes
- * {@code "http://example.com/hotel%20list"}. This also means if the URI template
- * or URI variables are already encoded, double encoding will occur, e.g.
- * {@code http://example.com/hotel%20list} becomes
- * {@code http://example.com/hotel%2520list}). To avoid that use a {@code URI} method
- * variant to provide (or re-use) a previously encoded URI. To prepare such an URI
- * with full control over encoding, consider using
- * {@link org.springframework.web.util.UriComponentsBuilder}.
- *
- * <p>Internally the template uses {@link HttpMessageConverter} instances to
- * convert HTTP messages to and from POJOs. Converters for the main mime types
- * are registered by default but you can also register additional converters
- * via {@link #setMessageConverters}.
- *
- * <p>This template uses a
- * {@link org.springframework.http.client.SimpleClientHttpRequestFactory} and a
- * {@link DefaultResponseErrorHandler} as default strategies for creating HTTP
- * connections or handling HTTP errors, respectively. These defaults can be overridden
- * through {@link #setRequestFactory} and {@link #setErrorHandler} respectively.
+ * <p><strong>NOTE:</strong> As of 5.0, the non-blocking, reactive
+ * {@code org.springframework.web.reactive.client.WebClient} offers a
+ * modern alternative to the {@code RestTemplate} with efficient support for
+ * both sync and async, as well as streaming scenarios. The {@code RestTemplate}
+ * will be deprecated in a future version and will not have major new features
+ * added going forward.
  *
  * @author Arjen Poutsma
  * @author Brian Clozel
@@ -119,7 +84,6 @@ import org.springframework.web.util.UriTemplateHandler;
  * @see RequestCallback
  * @see ResponseExtractor
  * @see ResponseErrorHandler
- * @see AsyncRestTemplate
  */
 public class RestTemplate extends InterceptingHttpAccessor implements RestOperations {
 
@@ -210,7 +174,7 @@ public class RestTemplate extends InterceptingHttpAccessor implements RestOperat
 
 	/**
 	 * Create a new instance of the {@link RestTemplate} based on the given {@link ClientHttpRequestFactory}.
-	 * @param requestFactory HTTP request factory to use
+	 * @param requestFactory the HTTP request factory to use
 	 * @see org.springframework.http.client.SimpleClientHttpRequestFactory
 	 * @see org.springframework.http.client.HttpComponentsClientHttpRequestFactory
 	 */
@@ -221,7 +185,7 @@ public class RestTemplate extends InterceptingHttpAccessor implements RestOperat
 
 	/**
 	 * Create a new instance of the {@link RestTemplate} using the given list of
-	 * {@link HttpMessageConverter} to use
+	 * {@link HttpMessageConverter} to use.
 	 * @param messageConverters the list of {@link HttpMessageConverter} to use
 	 * @since 3.2.7
 	 */
@@ -653,27 +617,23 @@ public class RestTemplate extends InterceptingHttpAccessor implements RestOperat
 	public <T> ResponseEntity<T> exchange(RequestEntity<?> requestEntity, Class<T> responseType)
 			throws RestClientException {
 
-		Assert.notNull(requestEntity, "RequestEntity must not be null");
-
 		RequestCallback requestCallback = httpEntityCallback(requestEntity, responseType);
 		ResponseExtractor<ResponseEntity<T>> responseExtractor = responseEntityExtractor(responseType);
-		return nonNull(execute(requestEntity.getUrl(), requestEntity.getMethod(), requestCallback, responseExtractor));
+		return nonNull(doExecute(requestEntity.getUrl(), requestEntity.getMethod(), requestCallback, responseExtractor));
 	}
 
 	@Override
 	public <T> ResponseEntity<T> exchange(RequestEntity<?> requestEntity, ParameterizedTypeReference<T> responseType)
 			throws RestClientException {
 
-		Assert.notNull(requestEntity, "RequestEntity must not be null");
-
 		Type type = responseType.getType();
 		RequestCallback requestCallback = httpEntityCallback(requestEntity, type);
 		ResponseExtractor<ResponseEntity<T>> responseExtractor = responseEntityExtractor(type);
-		return nonNull(execute(requestEntity.getUrl(), requestEntity.getMethod(), requestCallback, responseExtractor));
+		return nonNull(doExecute(requestEntity.getUrl(), requestEntity.getMethod(), requestCallback, responseExtractor));
 	}
 
 
-	// general execution
+	// General execution
 
 	@Override
 	@Nullable
@@ -696,7 +656,7 @@ public class RestTemplate extends InterceptingHttpAccessor implements RestOperat
 
 	@Override
 	@Nullable
-	public <T> T execute(URI url, @Nullable HttpMethod method, @Nullable RequestCallback requestCallback,
+	public <T> T execute(URI url, HttpMethod method, @Nullable RequestCallback requestCallback,
 			@Nullable ResponseExtractor<T> responseExtractor) throws RestClientException {
 
 		return doExecute(url, method, requestCallback, responseExtractor);
@@ -716,8 +676,8 @@ public class RestTemplate extends InterceptingHttpAccessor implements RestOperat
 	protected <T> T doExecute(URI url, @Nullable HttpMethod method, @Nullable RequestCallback requestCallback,
 			@Nullable ResponseExtractor<T> responseExtractor) throws RestClientException {
 
-		Assert.notNull(url, "'url' must not be null");
-		Assert.notNull(method, "'method' must not be null");
+		Assert.notNull(url, "URI is required");
+		Assert.notNull(method, "HttpMethod is required");
 		ClientHttpResponse response = null;
 		try {
 			ClientHttpRequest request = createRequest(url, method);
@@ -726,12 +686,7 @@ public class RestTemplate extends InterceptingHttpAccessor implements RestOperat
 			}
 			response = request.execute();
 			handleResponse(url, method, response);
-			if (responseExtractor != null) {
-				return responseExtractor.extractData(response);
-			}
-			else {
-				return null;
-			}
+			return (responseExtractor != null ? responseExtractor.extractData(response) : null);
 		}
 		catch (IOException ex) {
 			String resource = url.toString();
@@ -777,39 +732,43 @@ public class RestTemplate extends InterceptingHttpAccessor implements RestOperat
 	}
 
 	/**
-	 * Returns a request callback implementation that prepares the request {@code Accept}
-	 * headers based on the given response type and configured
-	 * {@linkplain #getMessageConverters() message converters}.
+	 * Return a {@code RequestCallback} that sets the request {@code Accept}
+	 * header based on the given response type, cross-checked against the
+	 * configured message converters.
 	 */
 	protected <T> RequestCallback acceptHeaderRequestCallback(Class<T> responseType) {
 		return new AcceptHeaderRequestCallback(responseType);
 	}
 
 	/**
-	 * Returns a request callback implementation that writes the given object to the
-	 * request stream.
+	 * Return a {@code RequestCallback} implementation that writes the given
+	 * object to the request stream.
 	 */
 	protected <T> RequestCallback httpEntityCallback(@Nullable Object requestBody) {
 		return new HttpEntityRequestCallback(requestBody);
 	}
 
 	/**
-	 * Returns a request callback implementation that writes the given object to the
-	 * request stream.
+	 * Return a {@code RequestCallback} implementation that:
+	 * <ol>
+	 * <li>Sets the request {@code Accept} header based on the given response
+	 * type, cross-checked against the configured message converters.
+	 * <li>Writes the given object to the request stream.
+	 * </ol>
 	 */
 	protected <T> RequestCallback httpEntityCallback(@Nullable Object requestBody, Type responseType) {
 		return new HttpEntityRequestCallback(requestBody, responseType);
 	}
 
 	/**
-	 * Returns a response extractor for {@link ResponseEntity}.
+	 * Return a {@code ResponseExtractor} that prepares a {@link ResponseEntity}.
 	 */
 	protected <T> ResponseExtractor<ResponseEntity<T>> responseEntityExtractor(Type responseType) {
 		return new ResponseEntityResponseExtractor<>(responseType);
 	}
 
 	/**
-	 * Returns a response extractor for {@link HttpHeaders}.
+	 * Return a response extractor for {@link HttpHeaders}.
 	 */
 	protected ResponseExtractor<HttpHeaders> headersExtractor() {
 		return this.headersExtractor;
@@ -829,7 +788,7 @@ public class RestTemplate extends InterceptingHttpAccessor implements RestOperat
 		@Nullable
 		private final Type responseType;
 
-		private AcceptHeaderRequestCallback(@Nullable Type responseType) {
+		public AcceptHeaderRequestCallback(@Nullable Type responseType) {
 			this.responseType = responseType;
 		}
 
@@ -886,11 +845,11 @@ public class RestTemplate extends InterceptingHttpAccessor implements RestOperat
 
 		private final HttpEntity<?> requestEntity;
 
-		private HttpEntityRequestCallback(@Nullable Object requestBody) {
+		public HttpEntityRequestCallback(@Nullable Object requestBody) {
 			this(requestBody, null);
 		}
 
-		private HttpEntityRequestCallback(@Nullable Object requestBody, @Nullable Type responseType) {
+		public HttpEntityRequestCallback(@Nullable Object requestBody, @Nullable Type responseType) {
 			super(responseType);
 			if (requestBody instanceof HttpEntity) {
 				this.requestEntity = (HttpEntity<?>) requestBody;
@@ -1013,7 +972,7 @@ public class RestTemplate extends InterceptingHttpAccessor implements RestOperat
 	private static class HeadersExtractor implements ResponseExtractor<HttpHeaders> {
 
 		@Override
-		public HttpHeaders extractData(ClientHttpResponse response) throws IOException {
+		public HttpHeaders extractData(ClientHttpResponse response) {
 			return response.getHeaders();
 		}
 	}

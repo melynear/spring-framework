@@ -715,8 +715,8 @@ public class DataBinder implements PropertyEditorRegistry, TypeConverter {
 	 * @see #doBind(org.springframework.beans.MutablePropertyValues)
 	 */
 	public void bind(PropertyValues pvs) {
-		MutablePropertyValues mpvs = (pvs instanceof MutablePropertyValues) ?
-				(MutablePropertyValues) pvs : new MutablePropertyValues(pvs);
+		MutablePropertyValues mpvs = (pvs instanceof MutablePropertyValues ?
+				(MutablePropertyValues) pvs : new MutablePropertyValues(pvs));
 		doBind(mpvs);
 	}
 
@@ -853,7 +853,7 @@ public class DataBinder implements PropertyEditorRegistry, TypeConverter {
 	 * @see #getBindingResult()
 	 */
 	public void validate() {
-		for (Validator validator : this.validators) {
+		for (Validator validator : getValidators()) {
 			validator.validate(getTarget(), getBindingResult());
 		}
 	}

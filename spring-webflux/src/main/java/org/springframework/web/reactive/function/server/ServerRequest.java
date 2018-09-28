@@ -248,7 +248,6 @@ public interface ServerRequest {
 	/**
 	 * Return the form data from the body of the request if the Content-Type is
 	 * {@code "application/x-www-form-urlencoded"} or an empty map otherwise.
-	 *
 	 * <p><strong>Note:</strong> calling this method causes the request body to
 	 * be read and parsed in full and the resulting {@code MultiValueMap} is
 	 * cached so that this method is safe to call more than once.
@@ -258,7 +257,6 @@ public interface ServerRequest {
 	/**
 	 * Return the parts of a multipart request if the Content-Type is
 	 * {@code "multipart/form-data"} or an empty map otherwise.
-	 *
 	 * <p><strong>Note:</strong> calling this method causes the request body to
 	 * be read and parsed in full and the resulting {@code MultiValueMap} is
 	 * cached so that this method is safe to call more than once.
@@ -266,6 +264,7 @@ public interface ServerRequest {
 	Mono<MultiValueMap<String, Part>> multipartData();
 
 
+	// Static builder methods
 
 	/**
 	 * Create a new {@code ServerRequest} based on the given {@code ServerWebExchange} and
@@ -274,11 +273,10 @@ public interface ServerRequest {
 	 * @param messageReaders the message readers
 	 * @return the created {@code ServerRequest}
 	 */
-	static ServerRequest create(ServerWebExchange exchange,
-			List<HttpMessageReader<?>> messageReaders) {
-
+	static ServerRequest create(ServerWebExchange exchange, List<HttpMessageReader<?>> messageReaders) {
 		return new DefaultServerRequest(exchange, messageReaders);
 	}
+
 
 	/**
 	 * Represents the headers of the HTTP request.
@@ -287,20 +285,20 @@ public interface ServerRequest {
 	interface Headers {
 
 		/**
-		 * Return the list of acceptable {@linkplain MediaType media types},
+		 * Return the list of acceptable {@code MediaType media types},
 		 * as specified by the {@code Accept} header.
 		 * <p>Returns an empty list when the acceptable media types are unspecified.
 		 */
 		List<MediaType> accept();
 
 		/**
-		 * Return the list of acceptable {@linkplain Charset charsets},
+		 * Return the list of acceptable {@code Charset charsets},
 		 * as specified by the {@code Accept-Charset} header.
 		 */
 		List<Charset> acceptCharset();
 
 		/**
-		 * Return the list of acceptable {@linkplain Locale.LanguageRange languages},
+		 * Return the list of acceptable {@code Locale.LanguageRange languages},
 		 * as specified by the {@code Accept-Language} header.
 		 */
 		List<Locale.LanguageRange> acceptLanguage();
@@ -312,7 +310,7 @@ public interface ServerRequest {
 		OptionalLong contentLength();
 
 		/**
-		 * Return the {@linkplain MediaType media type} of the body, as specified
+		 * Return the {@code MediaType media type} of the body, as specified
 		 * by the {@code Content-Type} header.
 		 */
 		Optional<MediaType> contentType();

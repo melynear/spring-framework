@@ -75,7 +75,7 @@ public class HttpHeaders implements MultiValueMap<String, String>, Serializable 
 	/**
 	 * The empty {@code HttpHeaders} instance (immutable).
 	 */
-	public static final HttpHeaders EMPTY = new HttpHeaders(new LinkedHashMap<>(0), true);
+	public static final HttpHeaders EMPTY = new HttpHeaders(new LinkedHashMap<>(), true);
 	/**
 	 * The HTTP {@code Accept} header field name.
 	 * @see <a href="http://tools.ietf.org/html/rfc7231#section-5.3.2">Section 5.3.2 of RFC 7231</a>
@@ -172,7 +172,7 @@ public class HttpHeaders implements MultiValueMap<String, String>, Serializable 
 	 */
 	public static final String CONTENT_ENCODING = "Content-Encoding";
 	/**
-	 * The HTTP {@code Content-Disposition} header field name
+	 * The HTTP {@code Content-Disposition} header field name.
 	 * @see <a href="http://tools.ietf.org/html/rfc6266">RFC 6266</a>
 	 */
 	public static final String CONTENT_DISPOSITION = "Content-Disposition";
@@ -378,7 +378,7 @@ public class HttpHeaders implements MultiValueMap<String, String>, Serializable 
 	public static final String WWW_AUTHENTICATE = "WWW-Authenticate";
 
 	/**
-	 * Pattern matching ETag multiple field values in headers such as "If-Match", "If-None-Match"
+	 * Pattern matching ETag multiple field values in headers such as "If-Match", "If-None-Match".
 	 * @see <a href="https://tools.ietf.org/html/rfc7232#section-2.3">Section 2.3 of RFC 7232</a>
 	 */
 	private static final Pattern ETAG_HEADER_VALUE_PATTERN = Pattern.compile("\\*|\\s*((W\\/)?(\"[^\"]*\"))\\s*,?");
@@ -388,7 +388,7 @@ public class HttpHeaders implements MultiValueMap<String, String>, Serializable 
 	private static final ZoneId GMT = ZoneId.of("GMT");
 
 	/**
-	 * Date formats with time zone as specified in the HTTP RFC
+	 * Date formats with time zone as specified in the HTTP RFC.
 	 * @see <a href="https://tools.ietf.org/html/rfc7231#section-7.1.1.1">Section 7.1.1.1 of RFC 7231</a>
 	 */
 	private static final DateTimeFormatter[] DATE_FORMATTERS = new DateTimeFormatter[] {
@@ -414,7 +414,6 @@ public class HttpHeaders implements MultiValueMap<String, String>, Serializable 
 	 * Private constructor that can create read-only {@code HttpHeader} instances.
 	 */
 	private HttpHeaders(Map<String, List<String>> headers, boolean readOnly) {
-		Assert.notNull(headers, "'headers' must not be null");
 		if (readOnly) {
 			Map<String, List<String>> map = new LinkedCaseInsensitiveMap<>(headers.size(), Locale.ENGLISH);
 			headers.forEach((key, valueList) -> map.put(key, Collections.unmodifiableList(valueList)));
@@ -1219,9 +1218,14 @@ public class HttpHeaders implements MultiValueMap<String, String>, Serializable 
 	 * @see #setZonedDateTime(String, ZonedDateTime)
 	 */
 	public void setDate(String headerName, long date) {
+		set(headerName, formatDate(date));
+	}
+
+	// Package private: also used in ResponseCookie..
+	static String formatDate(long date) {
 		Instant instant = Instant.ofEpochMilli(date);
-		ZonedDateTime zonedDateTime = ZonedDateTime.ofInstant(instant, GMT);
-		set(headerName, DATE_FORMATTERS[0].format(zonedDateTime));
+		ZonedDateTime time = ZonedDateTime.ofInstant(instant, GMT);
+		return DATE_FORMATTERS[0].format(time);
 	}
 
 	/**
@@ -1277,7 +1281,7 @@ public class HttpHeaders implements MultiValueMap<String, String>, Serializable 
 	 * {@link IllegalArgumentException} ({@code true}) or rather return {@code null}
 	 * in that case ({@code false})
 	 * @return the parsed date header, or {@code null} if none (or invalid)
- 	 */
+	 */
 	@Nullable
 	private ZonedDateTime getFirstZonedDateTime(String headerName, boolean rejectInvalid) {
 		String headerValue = getFirst(headerName);
@@ -1556,6 +1560,7 @@ public class HttpHeaders implements MultiValueMap<String, String>, Serializable 
 	 * Return a {@code HttpHeaders} object that can only be read, not written to.
 	 */
 	public static HttpHeaders readOnlyHttpHeaders(HttpHeaders headers) {
+		Assert.notNull(headers, "HttpHeaders must not be null");
 		return (headers.readOnly ? headers : new HttpHeaders(headers, true));
 	}
 

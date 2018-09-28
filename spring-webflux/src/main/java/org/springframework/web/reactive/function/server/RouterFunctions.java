@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
 
 package org.springframework.web.reactive.function.server;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -65,7 +67,8 @@ public abstract class RouterFunctions {
 	public static final String URI_TEMPLATE_VARIABLES_ATTRIBUTE =
 			RouterFunctions.class.getName() + ".uriTemplateVariables";
 
-	private static final HandlerFunction<ServerResponse> NOT_FOUND_HANDLER = request -> ServerResponse.notFound().build();
+	private static final HandlerFunction<ServerResponse> NOT_FOUND_HANDLER =
+			request -> ServerResponse.notFound().build();
 
 
 	/**
@@ -83,11 +86,8 @@ public abstract class RouterFunctions {
 	 * {@code predicate} evaluates to {@code true}
 	 * @see RequestPredicates
 	 */
-	public static <T extends ServerResponse> RouterFunction<T> route(RequestPredicate predicate,
-			HandlerFunction<T> handlerFunction) {
-
-		Assert.notNull(predicate, "'predicate' must not be null");
-		Assert.notNull(handlerFunction, "'handlerFunction' must not be null");
+	public static <T extends ServerResponse> RouterFunction<T> route(
+			RequestPredicate predicate, HandlerFunction<T> handlerFunction) {
 
 		return new DefaultRouterFunction<>(predicate, handlerFunction);
 	}
@@ -104,9 +104,8 @@ public abstract class RouterFunctions {
 	 * RouterFunction&lt;ServerResponse&gt; userRoutes =
 	 *   RouterFunctions.route(RequestPredicates.method(HttpMethod.GET), this::listUsers)
 	 *     .andRoute(RequestPredicates.method(HttpMethod.POST), this::createUser);
-	 *
 	 * RouterFunction&lt;ServerResponse&gt; nestedRoute =
-	 *   RouterFunctions.nest(RequestPredicates.path("/user"),userRoutes);
+	 *   RouterFunctions.nest(RequestPredicates.path("/user"), userRoutes);
 	 * </pre>
 	 * @param predicate the predicate to test
 	 * @param routerFunction the nested router function to delegate to if the predicate applies
@@ -115,11 +114,8 @@ public abstract class RouterFunctions {
 	 * {@code predicate} evaluates to {@code true}
 	 * @see RequestPredicates
 	 */
-	public static <T extends ServerResponse> RouterFunction<T> nest(RequestPredicate predicate,
-			RouterFunction<T> routerFunction) {
-
-		Assert.notNull(predicate, "'predicate' must not be null");
-		Assert.notNull(routerFunction, "'routerFunction' must not be null");
+	public static <T extends ServerResponse> RouterFunction<T> nest(
+			RequestPredicate predicate, RouterFunction<T> routerFunction) {
 
 		return new DefaultNestedRouterFunction<>(predicate, routerFunction);
 	}
@@ -129,15 +125,13 @@ public abstract class RouterFunctions {
 	 * For instance
 	 * <pre class="code">
 	 * Resource location = new FileSystemResource("public-resources/");
-	 * RoutingFunction&lt;ServerResponse&gt; resources = RouterFunctions.resources("/resources/**", location);
+	 * RouterFunction&lt;ServerResponse&gt; resources = RouterFunctions.resources("/resources/**", location);
      * </pre>
 	 * @param pattern the pattern to match
 	 * @param location the location directory relative to which resources should be resolved
 	 * @return a router function that routes to resources
 	 */
 	public static RouterFunction<ServerResponse> resources(String pattern, Resource location) {
-		Assert.hasLength(pattern, "'pattern' must not be empty");
-		Assert.notNull(location, "'location' must not be null");
 		return resources(new PathResourceLookupFunction(pattern, location));
 	}
 
@@ -149,7 +143,6 @@ public abstract class RouterFunctions {
 	 * @return a router function that routes to resources
 	 */
 	public static RouterFunction<ServerResponse> resources(Function<ServerRequest, Mono<Resource>> lookupFunction) {
-		Assert.notNull(lookupFunction, "'lookupFunction' must not be null");
 		return new ResourcesRouterFunction(lookupFunction);
 	}
 
@@ -192,9 +185,6 @@ public abstract class RouterFunctions {
 	 * @return an http handler that handles HTTP request using the given router function
 	 */
 	public static HttpHandler toHttpHandler(RouterFunction<?> routerFunction, HandlerStrategies strategies) {
-		Assert.notNull(routerFunction, "RouterFunction must not be null");
-		Assert.notNull(strategies, "HandlerStrategies must not be null");
-
 		WebHandler webHandler = toWebHandler(routerFunction, strategies);
 		return WebHttpHandlerBuilder.webHandler(webHandler)
 				.filters(filters -> filters.addAll(strategies.webFilters()))
@@ -235,12 +225,13 @@ public abstract class RouterFunctions {
 		};
 	}
 
+
 	private static <T> Mono<T> wrapException(Supplier<Mono<T>> supplier) {
 		try {
 			return supplier.get();
 		}
-		catch (Throwable t) {
-			return Mono.error(t);
+		catch (Throwable ex) {
+			return Mono.error(ex);
 		}
 	}
 
@@ -313,6 +304,7 @@ public abstract class RouterFunctions {
 		}
 	}
 
+
 	static final class SameComposedRouterFunction<T extends ServerResponse> extends AbstractRouterFunction<T> {
 
 		private final RouterFunction<T> first;
@@ -360,8 +352,8 @@ public abstract class RouterFunctions {
 			this.first.accept(visitor);
 			this.second.accept(visitor);
 		}
-
 	}
+
 
 	static final class FilteredRouterFunction<T extends ServerResponse, S extends ServerResponse>
 			implements RouterFunction<S> {
@@ -387,17 +379,22 @@ public abstract class RouterFunctions {
 			this.routerFunction.accept(visitor);
 		}
 
+		@Override
+		public String toString() {
+			return this.routerFunction.toString();
+		}
 	}
 
-	private static final class DefaultRouterFunction<T extends ServerResponse>
-			extends AbstractRouterFunction<T> {
+
+	private static final class DefaultRouterFunction<T extends ServerResponse> extends AbstractRouterFunction<T> {
 
 		private final RequestPredicate predicate;
 
 		private final HandlerFunction<T> handlerFunction;
 
-		public DefaultRouterFunction(RequestPredicate predicate,
-				HandlerFunction<T> handlerFunction) {
+		public DefaultRouterFunction(RequestPredicate predicate, HandlerFunction<T> handlerFunction) {
+			Assert.notNull(predicate, "Predicate must not be null");
+			Assert.notNull(handlerFunction, "HandlerFunction must not be null");
 			this.predicate = predicate;
 			this.handlerFunction = handlerFunction;
 		}
@@ -406,8 +403,7 @@ public abstract class RouterFunctions {
 		public Mono<HandlerFunction<T>> route(ServerRequest request) {
 			if (this.predicate.test(request)) {
 				if (logger.isDebugEnabled()) {
-					logger.debug(String.format("Predicate \"%s\" matches against \"%s\"",
-							this.predicate, request));
+					logger.debug(String.format("Predicate \"%s\" matches against \"%s\"", this.predicate, request));
 				}
 				return Mono.just(this.handlerFunction);
 			}
@@ -420,18 +416,18 @@ public abstract class RouterFunctions {
 		public void accept(Visitor visitor) {
 			visitor.route(this.predicate, this.handlerFunction);
 		}
-
 	}
 
-	private static final class DefaultNestedRouterFunction<T extends ServerResponse>
-			extends AbstractRouterFunction<T> {
+
+	private static final class DefaultNestedRouterFunction<T extends ServerResponse> extends AbstractRouterFunction<T> {
 
 		private final RequestPredicate predicate;
 
 		private final RouterFunction<T> routerFunction;
 
-		public DefaultNestedRouterFunction(RequestPredicate predicate,
-				RouterFunction<T> routerFunction) {
+		public DefaultNestedRouterFunction(RequestPredicate predicate, RouterFunction<T> routerFunction) {
+			Assert.notNull(predicate, "Predicate must not be null");
+			Assert.notNull(routerFunction, "RouterFunction must not be null");
 			this.predicate = predicate;
 			this.routerFunction = routerFunction;
 		}
@@ -446,10 +442,26 @@ public abstract class RouterFunctions {
 													"Nested predicate \"%s\" matches against \"%s\"",
 													this.predicate, serverRequest));
 								}
-								return this.routerFunction.route(nestedRequest);
+								return this.routerFunction.route(nestedRequest)
+										.doOnNext(match -> {
+											mergeTemplateVariables(serverRequest, nestedRequest.pathVariables());
+										});
 							}
-					)
-					.orElseGet(Mono::empty);
+					).orElseGet(Mono::empty);
+		}
+
+		@SuppressWarnings("unchecked")
+		private void mergeTemplateVariables(ServerRequest request, Map<String, String> variables) {
+			if (!variables.isEmpty()) {
+				Map<String, Object> attributes = request.attributes();
+				Map<String, String> oldVariables =
+						(Map<String, String>) request.attribute(RouterFunctions.URI_TEMPLATE_VARIABLES_ATTRIBUTE)
+						.orElseGet(LinkedHashMap::new);
+				Map<String, String> mergedVariables = new LinkedHashMap<>(oldVariables);
+				mergedVariables.putAll(variables);
+				attributes.put(RouterFunctions.URI_TEMPLATE_VARIABLES_ATTRIBUTE,
+						Collections.unmodifiableMap(mergedVariables));
+			}
 		}
 
 		@Override
@@ -458,14 +470,15 @@ public abstract class RouterFunctions {
 			this.routerFunction.accept(visitor);
 			visitor.endNested(this.predicate);
 		}
-
 	}
+
 
 	private static class ResourcesRouterFunction extends  AbstractRouterFunction<ServerResponse> {
 
 		private final Function<ServerRequest, Mono<Resource>> lookupFunction;
 
 		public ResourcesRouterFunction(Function<ServerRequest, Mono<Resource>> lookupFunction) {
+			Assert.notNull(lookupFunction, "Function must not be null");
 			this.lookupFunction = lookupFunction;
 		}
 
@@ -479,6 +492,7 @@ public abstract class RouterFunctions {
 			visitor.resources(this.lookupFunction);
 		}
 	}
+
 
 	private static class HandlerStrategiesResponseContext implements ServerResponse.Context {
 

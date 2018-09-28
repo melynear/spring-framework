@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,19 +38,16 @@ import org.springframework.http.client.reactive.ClientHttpConnector;
 import org.springframework.http.client.reactive.ClientHttpRequest;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.BodyInserter;
+import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.util.UriBuilder;
 import org.springframework.web.util.UriBuilderFactory;
-import org.springframework.web.reactive.function.BodyInserters;
 
 /**
- * A non-blocking, reactive client for performing HTTP requests with Reactive
- * Streams back pressure. Provides a higher level, common API over HTTP client
- * libraries. Reactor Netty is used by default but other clients may be plugged
- * in with a {@link ClientHttpConnector}.
+ * Non-blocking, reactive client to perform HTTP requests, exposing a fluent,
+ * reactive API over underlying HTTP client libraries such as Reactor Netty.
  *
- * <p>Use one of the static factory methods {@link #create()} or
- * {@link #create(String)} or obtain a {@link WebClient#builder()} to create an
- * instance.
+ * <p>Use static factory methods {@link #create()} or {@link #create(String)},
+ * or {@link WebClient#builder()} to prepare an instance.
  *
  * <p>For examples with a response body see
  * {@link RequestHeadersSpec#retrieve() retrieve()} and
@@ -116,7 +113,8 @@ public interface WebClient {
 
 
 	/**
-	 * Return a builder to mutate properties of this web client.
+	 * Return a builder for a new {@code WebClient} with properties replicated
+	 * from the current {@code WebClient} instance, but without affecting it.
 	 */
 	Builder mutate();
 
@@ -136,6 +134,7 @@ public interface WebClient {
 	 * A variant of {@link #create()} that accepts a default base URL. For more
 	 * details see {@link Builder#baseUrl(String) Builder.baseUrl(String)}.
 	 * @param baseUrl the base URI for all requests
+	 * @see #builder()
 	 */
 	static WebClient create(String baseUrl) {
 		return new DefaultWebClientBuilder().baseUrl(baseUrl).build();
@@ -286,15 +285,6 @@ public interface WebClient {
 		Builder filters(Consumer<List<ExchangeFilterFunction>> filtersConsumer);
 
 		/**
-		 * Configure the {@link ExchangeStrategies} to use.
-		 * <p>By default {@link ExchangeStrategies#withDefaults()} is used.
-		 * @param strategies the strategies to use
-		 * @see #clientConnector(ClientHttpConnector)
-		 * @see #exchangeFunction(ExchangeFunction)
-		 */
-		Builder exchangeStrategies(ExchangeStrategies strategies);
-
-		/**
 		 * Provide a pre-configured {@link ExchangeFunction} instance. This is
 		 * an alternative to and effectively overrides the following:
 		 * <ul>
@@ -306,6 +296,15 @@ public interface WebClient {
 		 * @see #exchangeStrategies(ExchangeStrategies)
 		 */
 		Builder exchangeFunction(ExchangeFunction exchangeFunction);
+
+		/**
+		 * Configure the {@link ExchangeStrategies} to use.
+		 * <p>By default {@link ExchangeStrategies#withDefaults()} is used.
+		 * @param strategies the strategies to use
+		 * @see #clientConnector(ClientHttpConnector)
+		 * @see #exchangeFunction(ExchangeFunction)
+		 */
+		Builder exchangeStrategies(ExchangeStrategies strategies);
 
 		/**
 		 * Clone this {@code WebClient.Builder}

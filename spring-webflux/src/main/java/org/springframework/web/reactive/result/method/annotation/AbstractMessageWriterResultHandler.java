@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -103,8 +103,8 @@ public abstract class AbstractMessageWriterResultHandler extends HandlerResultHa
 	 * Write a given body to the response with {@link HttpMessageWriter}.
 	 * @param body the object to write
 	 * @param bodyParameter the {@link MethodParameter} of the body to write
-	 * @param actualParameter the actual return type of the method that returned the
-	 * value; could be different from {@code bodyParameter} when processing {@code HttpEntity}
+	 * @param actualParam the actual return type of the method that returned the value;
+	 * could be different from {@code bodyParameter} when processing {@code HttpEntity}
 	 * for example
 	 * @param exchange the current exchange
 	 * @return indicates completion or error
@@ -112,11 +112,10 @@ public abstract class AbstractMessageWriterResultHandler extends HandlerResultHa
 	 */
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	protected Mono<Void> writeBody(@Nullable Object body, MethodParameter bodyParameter,
-			@Nullable MethodParameter actualParameter, ServerWebExchange exchange) {
+			@Nullable MethodParameter actualParam, ServerWebExchange exchange) {
 
 		ResolvableType bodyType = ResolvableType.forMethodParameter(bodyParameter);
-		ResolvableType actualType = (actualParameter == null ?
-				bodyType : ResolvableType.forMethodParameter(actualParameter));
+		ResolvableType actualType = (actualParam != null ? ResolvableType.forMethodParameter(actualParam) : bodyType);
 		Class<?> bodyClass = bodyType.resolve();
 		ReactiveAdapter adapter = getAdapterRegistry().getAdapter(bodyClass, body);
 
@@ -124,7 +123,7 @@ public abstract class AbstractMessageWriterResultHandler extends HandlerResultHa
 		ResolvableType elementType;
 		if (adapter != null) {
 			publisher = adapter.toPublisher(body);
-			ResolvableType genericType = bodyType.getGeneric(0);
+			ResolvableType genericType = bodyType.getGeneric();
 			elementType = getElementType(adapter, genericType);
 		}
 		else {
